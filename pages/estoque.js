@@ -6,7 +6,7 @@ import Modal from '@/components/Modal'
 import { sb } from '@/lib/supabase'
 import { R } from '@/lib/helpers'
 
-const CATEGORIAS = ['Carnes','Grãos','Verduras','Bebidas','Temperos','Limpeza','Outros']
+const CATEGORIAS = ['Carnes','Grãos','Verduras','Bebidas','Temperos','Limpeza','Doces e Sobremesas','Porcoes','Saladas','Outros']
 const UNIDADES   = ['kg','g','l','ml','un','cx','maço','pacote']
 
 export default function Estoque() {
