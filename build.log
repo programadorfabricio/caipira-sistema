@@ -1,0 +1,209 @@
+
+> o-caipira@1.0.0 build
+> next build
+
+  ▲ Next.js 14.2.3
+  - Environments: .env.local
+
+   Linting and checking validity of types ...
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings
+
+./pages/salao.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+Import trace for requested module:
+./pages/salao.js
+
+./pages/salao.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+Import trace for requested module:
+./pages/salao.js
+
+./pages/vendas.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+Import trace for requested module:
+./pages/vendas.js
+
+./pages/vendas.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+Import trace for requested module:
+./pages/vendas.js
+
+./pages/vendas.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+Import trace for requested module:
+./pages/vendas.js
+
+./pages/whatsapp.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'getPreco' is not exported from '@/lib/helpers' (imported as 'getPreco').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'statusPedido' is not exported from '@/lib/helpers' (imported as 'statusPedido').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'statusPedido' is not exported from '@/lib/helpers' (imported as 'statusPedido').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+./pages/whatsapp.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+Import trace for requested module:
+./pages/whatsapp.js
+
+ ⚠ Compiled with warnings
+
+./pages/salao.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+./pages/salao.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+./pages/vendas.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+./pages/vendas.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+./pages/vendas.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+./pages/whatsapp.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+./pages/whatsapp.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+./pages/whatsapp.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+./pages/whatsapp.js
+Attempted import error: 'getPreco' is not exported from '@/lib/helpers' (imported as 'getPreco').
+
+./pages/whatsapp.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+./pages/whatsapp.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+./pages/whatsapp.js
+Attempted import error: 'statusPedido' is not exported from '@/lib/helpers' (imported as 'statusPedido').
+
+./pages/whatsapp.js
+Attempted import error: 'statusPedido' is not exported from '@/lib/helpers' (imported as 'statusPedido').
+
+./pages/whatsapp.js
+Attempted import error: 'TAMANHOS' is not exported from '@/lib/helpers' (imported as 'TAMANHOS').
+
+./pages/whatsapp.js
+Attempted import error: 'TIPOS_PRATO' is not exported from '@/lib/helpers' (imported as 'TIPOS_PRATO').
+
+ ✓ Compiled successfully
+   Collecting page data ...
+   Generating static pages (0/17) ...
+TypeError: Cannot read properties of undefined (reading 'filter')
+    at m (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\.next\server\pages\whatsapp.js:1:8336)
+    at Wc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:68:44)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:253)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:481)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:481)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at $c (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:78:98)
+    at bd (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:77:404)
+
+Error occurred prerendering page "/whatsapp". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of undefined (reading 'filter')
+    at m (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\.next\server\pages\whatsapp.js:1:8336)
+    at Wc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:68:44)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:253)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:481)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:481)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at $c (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:78:98)
+    at bd (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:77:404)
+   Generating static pages (4/17) 
+   Generating static pages (8/17) 
+   Generating static pages (12/17) 
+TypeError: Cannot read properties of undefined (reading 'find')
+    at p (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\.next\server\pages\vendas.js:1:8860)
+    at Wc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:68:44)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:253)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:481)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:481)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at $c (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:78:98)
+    at bd (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:77:404)
+
+Error occurred prerendering page "/vendas". Read more: https://nextjs.org/docs/messages/prerender-error
+
+TypeError: Cannot read properties of undefined (reading 'find')
+    at p (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\.next\server\pages\vendas.js:1:8860)
+    at Wc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:68:44)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:253)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:481)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at Zc (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:70:481)
+    at Z (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:76:89)
+    at $c (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:78:98)
+    at bd (C:\Users\user\Downloads\meus-projetos\o-caipira\caipira\node_modules\react-dom\cjs\react-dom-server.browser.production.min.js:77:404)
+ ✓ Generating static pages (17/17)
+
+> Export encountered errors on following paths:
+	/vendas
+	/whatsapp
