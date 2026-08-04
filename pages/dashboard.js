@@ -1,308 +1,157 @@
-// pages/dashboard.js — 📊 Visão geral do dia
-
-import { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
-import { sb } from "@/lib/supabase";
-import { R, hoje, TIPOS_PRATO } from "@/lib/helpers";
-import { useRouter } from "next/router";
+// pages/dashboard.js
+import { useState, useEffect } from 'react'
+import Layout from '@/components/Layout'
+import StatCard from '@/components/StatCard'
+import { R, D, hoje, meAtual } from '@/lib/helpers'
+import { getEstoque, getFinanceiro, getProdutos, getMovimentacoes } from '@/lib/db'
 
 export default function Dashboard() {
-  const router = useRouter();
-  const [dados, setDados] = useState({
-    mesasOcupadas: 0,
-    totalMesas: 8,
-    balcaoPendentes: 0,
-    wppPendentes: 0,
-    receitaHoje: 0,
-    despesaHoje: 0,
-    vendasHoje: [],
-    estoqueAlertas: [],
-  });
-  const [loading, setLoading] = useState(true);
+  const [dados, setDados] = useState({ estoque: [], fin: [], produtos: [], movs: [] })
+  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    carregar();
-  }, []);
+  useEffect(() => { carregar() }, [])
 
   async function carregar() {
-    setLoading(true);
-    const dataHoje = hoje();
-
-    const [
-      { data: mesas },
-      { data: balcao },
-      { data: wpp },
-      { data: fin },
-      { data: vendas },
-      { data: estoque },
-    ] = await Promise.all([
-      sb.from("mesas").select("status"),
-      sb
-        .from("balcao_pedidos")
-        .select("status")
-        .eq("data", dataHoje)
-        .in("status", ["aberto", "pronto"]),
-      sb
-        .from("wpp_pedidos")
-        .select("status")
-        .eq("data", dataHoje)
-        .in("status", ["aberto", "pronto"]),
-      sb.from("financeiro").select("tipo, valor").eq("data", dataHoje),
-      sb
-        .from("vendas_dia")
-        .select("tipo_prato, tamanho, origem, quantidade")
-        .eq("data", dataHoje),
-      sb
-        .from("estoque")
-        .select("nome, qty, min")
-        .lte("qty", "min")
-        .order("qty"),
-    ]);
-
-    const receitaHoje = (fin || [])
-      .filter((f) => f.tipo === "receita")
-      .reduce((s, f) => s + f.valor, 0);
-    const despesaHoje = (fin || [])
-      .filter((f) => f.tipo === "despesa")
-      .reduce((s, f) => s + f.valor, 0);
-
-    // Agrupa vendas por tipo
-    const vendasAgrupadas = {};
-    (vendas || []).forEach((v) => {
-      const key = `${v.tipo_prato} ${v.tamanho}`;
-      vendasAgrupadas[key] = (vendasAgrupadas[key] || 0) + v.quantidade;
-    });
-
+    const [e, f, p, m] = await Promise.all([
+      getEstoque(), getFinanceiro(), getProdutos(), getMovimentacoes(10)
+    ])
     setDados({
-      mesasOcupadas: (mesas || []).filter((m) => m.status === "ocupada").length,
-      totalMesas: (mesas || []).length,
-      balcaoPendentes: (balcao || []).length,
-      wppPendentes: (wpp || []).length,
-      receitaHoje,
-      despesaHoje,
-      vendasHoje: Object.entries(vendasAgrupadas).map(([k, v]) => ({
-        nome: k,
-        qtd: v,
-      })),
-      estoqueAlertas: estoque || [],
-    });
-    setLoading(false);
+      estoque:  e.data || [],
+      fin:      f.data || [],
+      produtos: p.data || [],
+      movs:     m.data || [],
+    })
+    setLoading(false)
   }
 
-  if (loading)
-    return (
-      <Layout title="Dashboard">
-        <div className="loading-overlay">
-          <div className="loading-icon">🌽</div>
-          <div className="loading-txt">Carregando...</div>
-        </div>
-      </Layout>
-    );
+  const finMes   = dados.fin.filter(f => f.data?.startsWith(meAtual()))
+  const vendas   = finMes.filter(f => f.tipo === 'venda').reduce((s, f) => s + Number(f.val), 0)
+  const desp     = finMes.filter(f => f.tipo === 'despesa').reduce((s, f) => s + Number(f.val), 0)
+  const saldo    = vendas - desp
+  const alertas  = dados.estoque.filter(i => i.qty < i.min).length
 
-  const {
-    mesasOcupadas,
-    totalMesas,
-    balcaoPendentes,
-    wppPendentes,
-    receitaHoje,
-    despesaHoje,
-    vendasHoje,
-    estoqueAlertas,
-  } = dados;
+  if (loading) return (
+    <Layout title="Dashboard" alertas={0}>
+      <div className="loading-overlay"><div className="loading-icon">🌽</div><div className="loading-txt">Carregando...</div></div>
+    </Layout>
+  )
+
+  // Gráfico 7 dias
+  const days = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i)
+    const date = d.toISOString().slice(0, 10)
+    const label = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+    const de = dados.fin.filter(f => f.data === date && f.tipo === 'despesa').reduce((s, f) => s + Number(f.val), 0)
+    days.push({ label, de })
+  }
+  const maxV = Math.max(1, ...days.map(d => d.de))
+
+  const top = [...dados.produtos].sort((a, b) => b.vendas - a.vendas).slice(0, 4)
+  const maxVendas = Math.max(1, ...top.map(p => p.vendas))
 
   return (
-    <Layout title="Dashboard">
+    <Layout title="Dashboard" alertas={alertas}>
       <div className="ph">
         <div>
-          <h2>Dashboard 📊</h2>
-          <div className="ph-sub">
-            Visão geral de hoje —{" "}
-            {new Date().toLocaleDateString("pt-BR", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}
-          </div>
-        </div>
-        <button className="btn btn-ghost btn-sm" onClick={carregar}>
-          🔄 Atualizar
-        </button>
-      </div>
-
-      {/* Cards principais */}
-      <div className="sg" style={{ marginBottom: "1.5rem" }}>
-        <div
-          className="sc"
-          style={{ cursor: "pointer" }}
-          onClick={() => router.push("/salao")}
-        >
-          <div className="sc-glow" />
-          <div className="sc-label">Mesas Ocupadas</div>
-          <div className="sc-val ora">
-            {mesasOcupadas}/{totalMesas}
-          </div>
-          <div className="sc-detail">Clique para ver o salão →</div>
-        </div>
-        <div
-          className="sc"
-          style={{ cursor: "pointer" }}
-          onClick={() => router.push("/balcao")}
-        >
-          <div className="sc-label">Balcão Pendentes</div>
-          <div className={`sc-val ${balcaoPendentes > 0 ? "am" : "vd"}`}>
-            {balcaoPendentes}
-          </div>
-          <div className="sc-detail">Clique para ver →</div>
-        </div>
-        <div
-          className="sc"
-          style={{ cursor: "pointer" }}
-          onClick={() => router.push("/whatsapp")}
-        >
-          <div className="sc-label">WhatsApp Pendentes</div>
-          <div className={`sc-val ${wppPendentes > 0 ? "am" : "vd"}`}>
-            {wppPendentes}
-          </div>
-          <div className="sc-detail">Clique para ver →</div>
-        </div>
-        <div
-          className="sc"
-          style={{ cursor: "pointer" }}
-          onClick={() => router.push("/financeiro")}
-        >
-          <div className="sc-glow" />
-          <div className="sc-label">Receita Hoje</div>
-          <div className="sc-val vd">{R(receitaHoje)}</div>
-          <div className="sc-detail">Lucro: {R(receitaHoje - despesaHoje)}</div>
+          <h2>Dashboard</h2>
+          <div className="ph-sub">{new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
         </div>
       </div>
 
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}
-      >
-        {/* Vendas do dia */}
+      {/* Stats */}
+      <div className="sg">
+        <StatCard label="Despesas do Mês" value={R(desp)}   detail={`${finMes.filter(f=>f.tipo==='despesa').length} lançamentos`} color="vm" />
+        <StatCard label="Lucro Líquido"   value={R(saldo)}  detail={`${vendas > 0 ? Math.round((saldo/vendas)*100) : 0}% de margem`} color={saldo >= 0 ? 'ora' : 'vm'} glow />
+        <StatCard label="Alertas Estoque" value={alertas}   detail={alertas > 0 ? 'itens abaixo do mínimo' : 'tudo ok'} color={alertas > 0 ? 'am' : 'vd'} />
+      </div>
+
+      <div className="g3">
+        {/* Gráfico 7 dias */}
         <div className="panel">
           <div className="panel-hd">
-            <div className="panel-title">Vendas de Hoje</div>
-            <div className="panel-tag">
-              {vendasHoje.reduce((s, v) => s + v.qtd, 0)} pratos
+            <div className="panel-title">Despesas — Últimos 7 dias</div>
+            <div className="panel-tag">semana atual</div>
+          </div>
+          <div className="bar-chart" style={{ display: 'flex', alignItems: 'flex-end', gap: '.45rem', height: 130 }}>
+            {days.map((d, i) => (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '.4rem' }}>
+                <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', width: '100%' }}>
+                  <div style={{ flex: 1, borderRadius: '5px 5px 0 0', background: 'rgba(231,76,60,.4)',  height: Math.max(4, Math.round((d.de / maxV) * 110)) }} title={R(d.de)} />
+                </div>
+                <div style={{ fontSize: '.62rem', fontFamily: 'var(--mono)', color: 'var(--txt)' }}>{d.label}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '.8rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '.4rem', fontSize: '.72rem', color: 'var(--txt)' }}>
+              <div style={{ width: 9, height: 9, borderRadius: '50%', background: 'var(--verm)' }} /> Despesas
             </div>
           </div>
-          {vendasHoje.length === 0 ? (
-            <div style={{ color: "var(--txt)", fontSize: ".85rem" }}>
-              Nenhuma venda registrada ainda.
-            </div>
-          ) : (
-            vendasHoje.map((v, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: ".5rem 0",
-                  borderBottom: "1px solid var(--c2)",
-                  fontSize: ".85rem",
-                }}
-              >
-                <span>{v.nome}</span>
-                <span
-                  style={{
-                    fontFamily: "var(--mono)",
-                    fontWeight: 700,
-                    color: "var(--ora)",
-                  }}
-                >
-                  {v.qtd}x
-                </span>
-              </div>
-            ))
-          )}
         </div>
 
-        {/* Alertas de estoque */}
-        <div className="panel">
-          <div className="panel-hd">
-            <div className="panel-title">⚠️ Estoque Baixo</div>
-            <div className="panel-tag">{estoqueAlertas.length} itens</div>
-          </div>
-          {estoqueAlertas.length === 0 ? (
-            <div style={{ color: "var(--verde)", fontSize: ".85rem" }}>
-              ✅ Estoque em dia!
+        <div className="gcol">
+          {/* Top pratos */}
+          <div className="panel">
+            <div className="panel-hd"><div className="panel-title">Top Pratos</div><div className="panel-tag">por vendas</div></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {top.length === 0
+                ? <div className="empty"><div className="empty-ico">🥘</div><div className="empty-title">Sem produtos</div></div>
+                : top.map(p => (
+                  <div key={p.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '.8rem', marginBottom: '.35rem' }}>
+                      <span style={{ fontWeight: 600 }}>{p.nome}</span>
+                      <span style={{ fontFamily: 'var(--mono)', color: 'var(--txt)' }}>{p.vendas} pedidos</span>
+                    </div>
+                    <div className="prog-bar">
+                      <div className="prog-fill" style={{ width: `${Math.round((p.vendas / maxVendas) * 100)}%` }} />
+                    </div>
+                  </div>
+                ))
+              }
             </div>
-          ) : (
-            estoqueAlertas.map((e, i) => (
-              <div
-                key={i}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: ".5rem 0",
-                  borderBottom: "1px solid var(--c2)",
-                  fontSize: ".85rem",
-                }}
-              >
-                <span>{e.nome}</span>
-                <span
-                  style={{
-                    fontFamily: "var(--mono)",
-                    color: e.qty === 0 ? "var(--verm)" : "var(--amar)",
-                    fontWeight: 700,
-                  }}
-                >
-                  {e.qty === 0 ? "Esgotado" : `${e.qty} (mín: ${e.min})`}
-                </span>
-              </div>
-            ))
-          )}
-          {estoqueAlertas.length > 0 && (
-            <button
-              className="btn btn-ghost btn-sm"
-              style={{ marginTop: ".8rem", width: "100%" }}
-              onClick={() => router.push("/estoque")}
-            >
-              Ver estoque completo →
-            </button>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* Acesso rápido */}
-      <div style={{ marginTop: "1.5rem" }}>
-        <div
-          style={{
-            fontSize: ".75rem",
-            fontWeight: 700,
-            color: "var(--txt)",
-            textTransform: "uppercase",
-            letterSpacing: ".1em",
-            marginBottom: ".8rem",
-          }}
-        >
-          Acesso Rápido
+      <div className="g2">
+        {/* Alertas estoque */}
+        <div className="panel">
+          <div className="panel-hd">
+            <div className="panel-title">⚠️ Alertas de Estoque</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '.7rem' }}>
+            {dados.estoque.filter(i => i.qty < i.min).slice(0, 5).map(i => (
+              <div key={i.id} className={`alert-item ${i.qty === 0 ? 'out' : 'low'}`}>
+                <div className="ai-emoji">{i.qty === 0 ? '🚨' : '⚠️'}</div>
+                <div className="ai-info">
+                  <div className="ai-name">{i.nome}</div>
+                  <div className="ai-desc">Atual: {i.qty}{i.unit} · Mín: {i.min}{i.unit}</div>
+                </div>
+              </div>
+            ))}
+            {alertas === 0 && <div className="empty"><div className="empty-ico">✅</div><div className="empty-title">Estoque ok!</div></div>}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: ".6rem", flexWrap: "wrap" }}>
-          {[
-            { label: "🍽️ Salão", href: "/salao" },
-            { label: "🥡 Balcão", href: "/balcao" },
-            { label: "📱 WhatsApp", href: "/whatsapp" },
-            { label: "👨‍🍳 Cozinha", href: "/cozinha" },
-            { label: "💰 Financeiro", href: "/financeiro" },
-            { label: "📦 Estoque", href: "/estoque" },
-            { label: "📋 Relatórios", href: "/relatorios" },
-            { label: "⚙️ Configurações", href: "/configuracoes" },
-          ].map((item) => (
-            <button
-              key={item.href}
-              className="btn btn-ghost btn-sm"
-              onClick={() => router.push(item.href)}
-            >
-              {item.label}
-            </button>
-          ))}
+
+        {/* Últimas movimentações */}
+        <div className="panel">
+          <div className="panel-hd"><div className="panel-title">🔄 Últimas Movimentações</div></div>
+          <div className="mov-list">
+            {dados.movs.slice(0, 6).map(m => (
+              <div key={m.id} className="mov-item">
+                <div className={`mv-dot ${m.tipo}`} />
+                <div className="mv-info">
+                  <div className="mv-name">{m.nome}</div>
+                  <div className="mv-date">{D(m.data)}{m.obs ? ' · ' + m.obs : ''}</div>
+                </div>
+                <div className={`mv-val ${m.tipo}`}>{m.tipo === 'entrada' ? '+' : '-'}{m.qty}</div>
+              </div>
+            ))}
+            {dados.movs.length === 0 && <div className="empty"><div className="empty-ico">📋</div><div className="empty-title">Nenhuma movimentação</div></div>}
+          </div>
         </div>
       </div>
     </Layout>
-  );
+  )
 }

@@ -145,13 +145,13 @@ input, select, textarea { font-family: var(--mono); }
 .mov-list        { display: flex; flex-direction: column; gap: .55rem; }
 .mov-item        { display: flex; align-items: center; gap: .9rem; padding: .9rem 1rem; background: var(--c2); border-radius: 9px; }
 .mv-dot          { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.mv-dot.entrada, .mv-dot.receita  { background: var(--verde); }
+.mv-dot.entrada, .mv-dot.venda    { background: var(--verde); }
 .mv-dot.saida,   .mv-dot.despesa  { background: var(--verm); }
 .mv-info         { flex: 1; min-width: 0; }
 .mv-name         { font-weight: 600; font-size: .83rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mv-date         { font-size: .7rem; color: var(--txt); font-family: var(--mono); }
 .mv-val          { font-family: var(--mono); font-weight: 600; font-size: .85rem; white-space: nowrap; }
-.mv-val.entrada, .mv-val.receita  { color: var(--verde); }
+.mv-val.entrada, .mv-val.venda    { color: var(--verde); }
 .mv-val.saida,   .mv-val.despesa  { color: var(--verm); }
 
 /* ── EMPTY STATE ── */

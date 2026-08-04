@@ -1,5 +1,5 @@
 // components/StatCard.js
-// Uso: <StatCard label="Receita" value="R$ 1.200" detail="12 lançamentos" color="vd" glow />
+// Uso: <StatCard label="Vendas" value="R$ 1.200" detail="12 lançamentos" color="vd" glow />
 
 export default function StatCard({ label, value, detail, color = '', glow = false }) {
   return (

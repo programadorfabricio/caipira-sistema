@@ -1,106 +1,78 @@
-// pages/index.js — Login do sistema
-
+// pages/index.js — Tela de Login
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
-import { sb } from '@/lib/supabase'
-
-const REDIRECT = {
-  admin:   '/dashboard',
-  caixa:   '/dashboard',
-  garcom:  '/salao',
-  cozinha: '/cozinha',
-  estoque: '/estoque',
-}
 
 export default function Login() {
   const router = useRouter()
-  const [email, setEmail]   = useState('')
-  const [senha, setSenha]   = useState('')
-  const [erro, setErro]     = useState('')
-  const [loading, setLoading] = useState(false)
+  const [user, setUser] = useState('')
+  const [pass, setPass] = useState('')
+  const [erro, setErro] = useState(false)
 
-  async function logar(e) {
-    e.preventDefault()
-    setErro(''); setLoading(true)
-
-    const { data, error } = await sb.auth.signInWithPassword({ email, password: senha })
-
-    if (error) {
-      setErro('Email ou senha incorretos.')
-      setLoading(false)
-      return
+  function entrar(e) {
+    e?.preventDefault()
+    if (user === 'admin' && pass === '1234') {
+      // Troque isso por Supabase Auth quando quiser login real
+      sessionStorage.setItem('caipira_auth', '1')
+      router.push('/dashboard')
+    } else {
+      setErro(true)
     }
-
-    // Busca perfil do usuário
-    const { data: perfil } = await sb
-      .from('perfis')
-      .select('*')
-      .eq('user_id', data.user.id)
-      .eq('ativo', true)
-      .single()
-
-    if (!perfil) {
-      setErro('Usuário sem perfil cadastrado. Fale com o admin.')
-      await sb.auth.signOut()
-      setLoading(false)
-      return
-    }
-
-    // Salva na sessão
-    sessionStorage.setItem('caipira_auth', JSON.stringify({
-      id:     data.user.id,
-      email:  data.user.email,
-      nome:   perfil.nome,
-      perfil: perfil.perfil,
-    }))
-
-    router.push(REDIRECT[perfil.perfil] || '/dashboard')
   }
 
   return (
     <>
-      <Head>
-        <title>Login · Restaurante Caipira</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-
-      <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--preto)', padding:'1rem' }}>
-        <div style={{ width:'100%', maxWidth:400, background:'var(--c1)', border:'1px solid var(--c2)', borderRadius:18, padding:'2.5rem 2rem' }}>
-
-          {/* Logo */}
-          <div style={{ textAlign:'center', marginBottom:'2rem' }}>
-            <div style={{ width:64, height:64, borderRadius:16, background:'var(--ora)', display:'inline-flex', alignItems:'center', justifyContent:'center', fontSize:'2rem', marginBottom:'1rem' }}>
-              🌽
-            </div>
-            <div style={{ fontFamily:'var(--font)', fontWeight:800, fontSize:'1.4rem' }}>Restaurante Caipira</div>
-            <div style={{ fontSize:'.8rem', color:'var(--txt)', fontFamily:'var(--mono)', marginTop:'.3rem' }}>Sistema de Gestão</div>
+      <Head><title>O Caipira · Login</title></Head>
+      <div style={styles.wrap}>
+        <div style={styles.box}>
+          <div style={styles.logo}>
+            <div style={styles.logoIcon}>🌽</div>
+            <h1 style={styles.logoTitle}>O Caipira</h1>
+            <span style={styles.logoSub}>Sistema de Gestão · v2.0</span>
           </div>
 
-          <form onSubmit={logar}>
+          <form onSubmit={entrar}>
             <div className="fg">
-              <label>Email</label>
-              <input type="email" placeholder="seu@email.com"
-                value={email} onChange={e => setEmail(e.target.value)} required />
+              <label>Usuário</label>
+              <input
+                type="text"
+                placeholder="admin"
+                value={user}
+                onChange={e => { setUser(e.target.value); setErro(false) }}
+                autoComplete="username"
+              />
             </div>
             <div className="fg">
               <label>Senha</label>
-              <input type="password" placeholder="••••••••"
-                value={senha} onChange={e => setSenha(e.target.value)} required />
+              <input
+                type="password"
+                placeholder="••••••"
+                value={pass}
+                onChange={e => { setPass(e.target.value); setErro(false) }}
+                autoComplete="current-password"
+              />
             </div>
 
-            {erro && (
-              <div style={{ background:'rgba(231,76,60,.1)', border:'1px solid rgba(231,76,60,.3)', borderRadius:8, padding:'.7rem 1rem', fontSize:'.82rem', color:'var(--verm)', marginBottom:'1rem' }}>
-                {erro}
-              </div>
-            )}
+            <p style={styles.hint}>Demo → usuário: <b>admin</b> · senha: <b>1234</b></p>
 
-            <button type="submit" className="btn btn-ora" style={{ width:'100%', justifyContent:'center', padding:'.9rem', fontSize:'.95rem' }} disabled={loading}>
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
+            {erro && <p style={styles.erro}>Usuário ou senha incorretos.</p>}
+
+            <button type="submit" style={styles.btn}>Entrar no Sistema</button>
           </form>
         </div>
       </div>
     </>
   )
+}
+
+const styles = {
+  wrap:      { minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' },
+  box:       { width: '100%', maxWidth: 420, padding: '2.5rem', background: 'var(--c1)', border: '1px solid var(--c3)', borderRadius: 18, boxShadow: '0 30px 80px rgba(0,0,0,.7)' },
+  logo:      { textAlign: 'center', marginBottom: '2rem' },
+  logoIcon:  { width: 64, height: 64, borderRadius: 16, background: 'var(--ora)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', marginBottom: '.8rem', boxShadow: '0 8px 24px rgba(255,106,0,.4)' },
+  logoTitle: { fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-.03em' },
+  logoSub:   { fontSize: '.78rem', color: 'var(--txt)', fontFamily: 'var(--mono)' },
+  hint:      { fontSize: '.73rem', color: 'var(--txt)', fontFamily: 'var(--mono)', opacity: .55, marginBottom: '1.4rem' },
+  erro:      { color: 'var(--verm)', fontSize: '.8rem', fontFamily: 'var(--mono)', marginBottom: '.8rem', textAlign: 'center' },
+  btn:       { width: '100%', padding: '1rem', border: 'none', borderRadius: 10, background: 'var(--ora)', color: '#000', fontFamily: 'var(--font)', fontSize: '1rem', fontWeight: 800, cursor: 'pointer' },
 }

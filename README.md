@@ -22,7 +22,8 @@ o-caipira/
 │   ├── index.js                ← tela de login
 │   ├── dashboard.js            ← visão geral
 │   ├── comandas.js             ← pedidos + impressão ← PRINCIPAL
-│   ├── financeiro.js           ← receitas e despesas
+│   ├── caixa/abrir.js          ← abertura do caixa diário
+│   ├── caixa/fechar.js         ← fechamento do caixa diário
 │   ├── estoque.js              ← ingredientes e movimentações
 │   ├── cardapio.js             ← visualização do cardápio
 │   ├── produtos.js             ← CRUD de produtos
@@ -63,6 +64,7 @@ NEXT_PUBLIC_PIX_CHAVE=pix@ocaipira.com.br
 ### 3. Criar tabelas no Supabase
 - Abra: supabase.com → seu projeto → SQL Editor
 - Execute o SQL do arquivo `COMANDAS_SQL.sql`
+- Execute também o SQL do arquivo `CAIXA_SQL.sql` (tabela `caixa_diaria`)
 - As outras tabelas já foram criadas antes (estoque, financeiro, produtos, etc.)
 
 ### 4. Rodar em desenvolvimento
@@ -127,7 +129,8 @@ window.print()
 |----------------|---------------------------------------|
 | estoque        | ingredientes com quantidade e mínimo  |
 | movimentacoes  | entradas e saídas do estoque          |
-| financeiro     | receitas e despesas                   |
+| financeiro     | vendas (automáticas) e despesas        |
+| caixa_diaria   | abertura/fechamento de caixa por dia  |
 | produtos       | cardápio com preço e custo            |
 | ingredientes   | cadastro de insumos                   |
 | comandas       | pedidos (mesa, delivery, balcão)      |

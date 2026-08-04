@@ -1,390 +1,165 @@
-// pages/relatorios.js — 📋 Relatório de fechamento do dia
-
-import { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
-import { sb } from "@/lib/supabase";
-import { R, hoje } from "@/lib/helpers";
+// pages/relatorios.js
+import { useState, useEffect } from 'react'
+import Layout from '@/components/Layout'
+import StatCard from '@/components/StatCard'
+import { R, D, hoje, meAtual, mesAnterior } from '@/lib/helpers'
+import { getFinanceiro, getMovimentacoes } from '@/lib/db'
 
 export default function Relatorios() {
-  const [data, setData] = useState(hoje());
-  const [dados, setDados] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [fin, setFin]   = useState([])
+  const [movs, setMovs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [period, setPeriod]   = useState('mes')
 
   useEffect(() => {
-    buscar();
-  }, [data]);
+    Promise.all([getFinanceiro(), getMovimentacoes(200)]).then(([f, m]) => {
+      if (f.data) setFin(f.data.map(x => ({ ...x, desc: x.descricao })))
+      if (m.data) setMovs(m.data)
+      setLoading(false)
+    })
+  }, [])
 
-  async function buscar() {
-    setLoading(true);
-    const [
-      { data: fin },
-      { data: vendas },
-      { data: salao },
-      { data: balcao },
-      { data: wpp },
-    ] = await Promise.all([
-      sb.from("financeiro").select("*").eq("data", data).order("created_at"),
-      sb.from("vendas_dia").select("*").eq("data", data),
-      sb
-        .from("comandas")
-        .select("status, total, forma_pagamento")
-        .eq("data", data),
-      sb
-        .from("balcao_pedidos")
-        .select("status, total, forma_pagamento")
-        .eq("data", data),
-      sb
-        .from("wpp_pedidos")
-        .select("status, total, forma_pagamento, tipo_entrega")
-        .eq("data", data),
-    ]);
-
-    const receitas = (fin || []).filter((f) => f.tipo === "receita");
-    const despesas = (fin || []).filter((f) => f.tipo === "despesa");
-    const totalRec = receitas.reduce((s, f) => s + f.valor, 0);
-    const totalDes = despesas.reduce((s, f) => s + f.valor, 0);
-
-    // Por forma de pagamento
-    const porPagamento = {};
-    [...(salao || []), ...(balcao || []), ...(wpp || [])]
-      .filter((p) => ["paga", "pago"].includes(p.status))
-      .forEach((p) => {
-        const pag = p.forma_pagamento || "Outros";
-        porPagamento[pag] = (porPagamento[pag] || 0) + p.total;
-      });
-
-    // Vendas por tipo
-    const porTipo = {};
-    (vendas || []).forEach((v) => {
-      const key = `${v.tipo_prato} ${v.tamanho}`;
-      porTipo[key] = (porTipo[key] || 0) + v.quantidade;
-    });
-
-    // Por origem
-    const porOrigem = {
-      salao: (salao || [])
-        .filter((p) => p.status === "paga")
-        .reduce((s, p) => s + p.total, 0),
-      balcao: (balcao || [])
-        .filter((p) => p.status === "pago")
-        .reduce((s, p) => s + p.total, 0),
-      wpp: (wpp || [])
-        .filter((p) => p.status === "pago")
-        .reduce((s, p) => s + p.total, 0),
-      entrega: (wpp || [])
-        .filter((p) => p.status === "pago" && p.tipo_entrega === "entrega")
-        .reduce((s, p) => s + p.total, 0),
-    };
-
-    setDados({
-      receitas,
-      despesas,
-      totalRec,
-      totalDes,
-      lucro: totalRec - totalDes,
-      porPagamento,
-      porTipo,
-      porOrigem,
-      totalPratos: (vendas || []).reduce((s, v) => s + v.quantidade, 0),
-      cancelados: [...(salao || []), ...(balcao || []), ...(wpp || [])].filter(
-        (p) => ["cancelada", "cancelado"].includes(p.status),
-      ).length,
-    });
-    setLoading(false);
+  function filtrarFin(p) {
+    const tm = meAtual(), lm = mesAnterior(), hj = hoje()
+    const now = new Date()
+    const mon = new Date(now); mon.setDate(now.getDate() - now.getDay() + 1)
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+    if (p === 'dia')     return fin.filter(f => f.data === hj)
+    if (p === 'semana')  return fin.filter(f => f.data >= mon.toISOString().slice(0,10) && f.data <= sun.toISOString().slice(0,10))
+    if (p === 'mes')     return fin.filter(f => f.data?.startsWith(tm))
+    if (p === 'mes_ant') return fin.filter(f => f.data?.startsWith(lm))
+    return fin
   }
 
-  function imprimir() {
-    window.print();
+  function filtrarMovs(p) {
+    const tm = meAtual(), hj = hoje()
+    const now = new Date()
+    const mon = new Date(now); mon.setDate(now.getDate() - now.getDay() + 1)
+    const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+    if (p === 'dia')    return movs.filter(m => m.data === hj)
+    if (p === 'semana') return movs.filter(m => m.data >= mon.toISOString().slice(0,10) && m.data <= sun.toISOString().slice(0,10))
+    return movs.filter(m => m.data?.startsWith(tm))
   }
+
+  const finItems = filtrarFin(period)
+  const movItems = filtrarMovs(period)
+  const rec  = finItems.filter(f => f.tipo === 'venda').reduce((s, f) => s + Number(f.val), 0)
+  const desp = finItems.filter(f => f.tipo === 'despesa').reduce((s, f) => s + Number(f.val), 0)
+
+  // Estoque mais movimentado
+  const mapEst = {}
+  movItems.forEach(m => {
+    if (!mapEst[m.nome]) mapEst[m.nome] = { ent: 0, sai: 0 }
+    if (m.tipo === 'entrada') mapEst[m.nome].ent += Number(m.qty)
+    else mapEst[m.nome].sai += Number(m.qty)
+  })
+  const rowsEst = Object.entries(mapEst).sort((a, b) => (b[1].ent + b[1].sai) - (a[1].ent + a[1].sai))
+
+  // Top despesas
+  const topDesp = [...finItems.filter(f => f.tipo === 'despesa')].sort((a, b) => b.val - a.val).slice(0, 8)
+
+  // Comparativo meses
+  const finAtual = fin.filter(f => f.data?.startsWith(meAtual()))
+  const finAnt   = fin.filter(f => f.data?.startsWith(mesAnterior()))
+  const rA = finAtual.filter(f => f.tipo === 'venda').reduce((s, f) => s + Number(f.val), 0)
+  const dA = finAtual.filter(f => f.tipo === 'despesa').reduce((s, f) => s + Number(f.val), 0)
+  const rP = finAnt.filter(f => f.tipo === 'venda').reduce((s, f) => s + Number(f.val), 0)
+  const dP = finAnt.filter(f => f.tipo === 'despesa').reduce((s, f) => s + Number(f.val), 0)
+  const diffR = rP > 0 ? Math.round(((rA - rP) / rP) * 100) : 0
+  const diffD = dP > 0 ? Math.round(((dA - dP) / dP) * 100) : 0
+
+  const labels = { dia: 'Hoje', semana: 'Esta Semana', mes: 'Este Mês', mes_ant: 'Mês Anterior' }
+
+  if (loading) return <Layout title="Relatórios"><div className="loading-overlay"><div className="loading-icon">🌽</div></div></Layout>
 
   return (
     <Layout title="Relatórios">
       <div className="ph">
-        <div>
-          <h2>Relatórios 📋</h2>
-        </div>
+        <div><h2>Relatórios</h2><div className="ph-sub">{labels[period]}</div></div>
         <div className="ph-actions">
-          <input
-            type="date"
-            value={data}
-            onChange={(e) => setData(e.target.value)}
-            style={{
-              padding: ".6rem .9rem",
-              background: "var(--c2)",
-              border: "1px solid var(--c3)",
-              borderRadius: 8,
-              color: "var(--branco)",
-              fontFamily: "var(--mono)",
-              fontSize: ".85rem",
-              outline: "none",
-            }}
-          />
-          <button className="btn btn-ghost btn-sm" onClick={imprimir}>
-            🖨️ Imprimir
-          </button>
+          <div className="period-tabs">
+            {Object.entries(labels).map(([k, v]) => (
+              <button key={k} className={`ptab${period === k ? ' active' : ''}`} onClick={() => setPeriod(k)}>{v}</button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {loading && (
-        <div
-          style={{ textAlign: "center", padding: "3rem", color: "var(--txt)" }}
-        >
-          Carregando...
-        </div>
-      )}
+      <div className="sg">
+        <StatCard label="Vendas"       value={R(rec)}      color="vd" />
+        <StatCard label="Despesas"     value={R(desp)}     color="vm" />
+        <StatCard label="Lucro Líquido" value={R(rec-desp)} color={rec-desp >= 0 ? 'ora' : 'vm'} glow />
+        <StatCard label="Margem"       value={`${rec > 0 ? Math.round(((rec-desp)/rec)*100) : 0}%`} color="az" />
+      </div>
 
-      {dados && !loading && (
-        <>
-          {/* Resumo financeiro */}
-          <div className="sg" style={{ marginBottom: "1.5rem" }}>
-            <div className="sc">
-              <div className="sc-glow" />
-              <div className="sc-label">Total Receitas</div>
-              <div className="sc-val vd">{R(dados.totalRec)}</div>
-            </div>
-            <div className="sc">
-              <div className="sc-label">Total Despesas</div>
-              <div className="sc-val vm">{R(dados.totalDes)}</div>
-            </div>
-            <div className="sc">
-              <div className="sc-glow" />
-              <div className="sc-label">Lucro do Dia</div>
-              <div className={`sc-val ${dados.lucro >= 0 ? "vd" : "vm"}`}>
-                {R(dados.lucro)}
-              </div>
-            </div>
-            <div className="sc">
-              <div className="sc-label">Pratos Vendidos</div>
-              <div className="sc-val ora">{dados.totalPratos}</div>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "1rem",
-              marginBottom: "1rem",
-            }}
-          >
-            {/* Por origem */}
-            <div className="panel">
-              <div className="panel-hd">
-                <div className="panel-title">Vendas por Origem</div>
-              </div>
-              {[
-                { label: "🍽️ Salão", val: dados.porOrigem.salao },
-                { label: "🥡 Balcão", val: dados.porOrigem.balcao },
-                { label: "📱 WhatsApp", val: dados.porOrigem.wpp },
-                { label: "🛵 Entregas", val: dados.porOrigem.entrega },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: ".5rem 0",
-                    borderBottom: "1px solid var(--c2)",
-                    fontSize: ".85rem",
-                  }}
-                >
-                  <span>{item.label}</span>
-                  <span
-                    style={{
-                      fontFamily: "var(--mono)",
-                      fontWeight: 700,
-                      color: "var(--ora)",
-                    }}
-                  >
-                    {R(item.val)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Por forma de pagamento */}
-            <div className="panel">
-              <div className="panel-hd">
-                <div className="panel-title">Por Forma de Pagamento</div>
-              </div>
-              {Object.entries(dados.porPagamento).length === 0 ? (
-                <div style={{ color: "var(--txt)", fontSize: ".85rem" }}>
-                  Nenhum pagamento registrado
-                </div>
-              ) : (
-                Object.entries(dados.porPagamento).map(([pag, val]) => (
-                  <div
-                    key={pag}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: ".5rem 0",
-                      borderBottom: "1px solid var(--c2)",
-                      fontSize: ".85rem",
-                    }}
-                  >
-                    <span>{pag}</span>
-                    <span
-                      style={{ fontFamily: "var(--mono)", fontWeight: 700 }}
-                    >
-                      {R(val)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "1rem",
-              marginBottom: "1rem",
-            }}
-          >
-            {/* Pratos mais vendidos */}
-            <div className="panel">
-              <div className="panel-hd">
-                <div className="panel-title">Pratos Vendidos</div>
-              </div>
-              {Object.entries(dados.porTipo).length === 0 ? (
-                <div style={{ color: "var(--txt)", fontSize: ".85rem" }}>
-                  Nenhum prato vendido
-                </div>
-              ) : (
-                Object.entries(dados.porTipo)
-                  .sort((a, b) => b[1] - a[1])
-                  .map(([tipo, qtd]) => (
-                    <div
-                      key={tipo}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        padding: ".5rem 0",
-                        borderBottom: "1px solid var(--c2)",
-                        fontSize: ".85rem",
-                      }}
-                    >
-                      <span>{tipo}</span>
-                      <span
-                        style={{
-                          fontFamily: "var(--mono)",
-                          fontWeight: 700,
-                          color: "var(--ora)",
-                        }}
-                      >
-                        {qtd}x
-                      </span>
-                    </div>
+      <div className="g2">
+        {/* Estoque movimentado */}
+        <div className="panel">
+          <div className="panel-hd"><div className="panel-title">📦 Itens mais movimentados</div></div>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead><tr><th>Item</th><th>Entradas</th><th>Saídas</th><th>Saldo</th></tr></thead>
+              <tbody>
+                {rowsEst.length === 0
+                  ? <tr><td colSpan="4"><div className="empty"><div className="empty-ico">📦</div><div className="empty-title">Sem dados</div></div></td></tr>
+                  : rowsEst.map(([n, v]) => (
+                    <tr key={n}>
+                      <td><strong>{n}</strong></td>
+                      <td style={{ color: 'var(--verde)', fontFamily: 'var(--mono)' }}>+{v.ent}</td>
+                      <td style={{ color: 'var(--verm)',  fontFamily: 'var(--mono)' }}>-{v.sai}</td>
+                      <td style={{ fontFamily: 'var(--mono)', fontWeight: 700, color: v.ent-v.sai >= 0 ? 'var(--verde)' : 'var(--verm)' }}>
+                        {v.ent-v.sai >= 0 ? '+' : ''}{v.ent-v.sai}
+                      </td>
+                    </tr>
                   ))
-              )}
-            </div>
-
-            {/* Despesas */}
-            <div className="panel">
-              <div className="panel-hd">
-                <div className="panel-title">Despesas do Dia</div>
-              </div>
-              {dados.despesas.length === 0 ? (
-                <div style={{ color: "var(--txt)", fontSize: ".85rem" }}>
-                  Nenhuma despesa lançada
-                </div>
-              ) : (
-                dados.despesas.map((d, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      padding: ".5rem 0",
-                      borderBottom: "1px solid var(--c2)",
-                      fontSize: ".85rem",
-                    }}
-                  >
-                    <span style={{ color: "var(--txt)" }}>{d.descricao}</span>
-                    <span
-                      style={{
-                        fontFamily: "var(--mono)",
-                        color: "var(--verm)",
-                        fontWeight: 600,
-                      }}
-                    >
-                      -{R(d.valor)}
-                    </span>
-                  </div>
-                ))
-              )}
-              {dados.despesas.length > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    padding: ".6rem 0",
-                    fontWeight: 800,
-                    fontSize: ".9rem",
-                  }}
-                >
-                  <span>Total despesas</span>
-                  <span
-                    style={{ fontFamily: "var(--mono)", color: "var(--verm)" }}
-                  >
-                    {R(dados.totalDes)}
-                  </span>
-                </div>
-              )}
-            </div>
+                }
+              </tbody>
+            </table>
           </div>
+        </div>
 
-          {/* Resumo final */}
-          <div
-            className="panel"
-            style={{
-              background: "rgba(255,106,0,.05)",
-              border: "1px solid rgba(255,106,0,.2)",
-            }}
-          >
-            <div style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  fontSize: ".8rem",
-                  color: "var(--txt)",
-                  marginBottom: ".4rem",
-                  fontFamily: "var(--mono)",
-                }}
-              >
-                FECHAMENTO DO DIA —{" "}
-                {new Date(data + "T12:00").toLocaleDateString("pt-BR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </div>
-              <div
-                style={{
-                  fontSize: "2.5rem",
-                  fontWeight: 800,
-                  color: dados.lucro >= 0 ? "var(--verde)" : "var(--verm)",
-                  fontFamily: "var(--mono)",
-                }}
-              >
-                {R(dados.lucro)}
-              </div>
-              <div
-                style={{
-                  fontSize: ".85rem",
-                  color: "var(--txt)",
-                  marginTop: ".3rem",
-                }}
-              >
-                {dados.totalPratos} pratos vendidos · {dados.cancelados}{" "}
-                cancelados
-              </div>
-            </div>
+        {/* Top despesas */}
+        <div className="panel">
+          <div className="panel-hd"><div className="panel-title">💸 Top Despesas do Período</div></div>
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead><tr><th>Descrição</th><th>Categoria</th><th>Valor</th></tr></thead>
+              <tbody>
+                {topDesp.length === 0
+                  ? <tr><td colSpan="3"><div className="empty"><div className="empty-ico">💸</div><div className="empty-title">Sem despesas</div></div></td></tr>
+                  : topDesp.map(f => (
+                    <tr key={f.id}>
+                      <td><strong>{f.desc}</strong></td>
+                      <td><span className="badge out">{f.cat}</span></td>
+                      <td style={{ color: 'var(--verm)', fontFamily: 'var(--mono)', fontWeight: 700 }}>{R(f.val)}</td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
           </div>
-        </>
-      )}
+        </div>
+      </div>
+
+      {/* Comparativo mensal */}
+      <div className="panel">
+        <div className="panel-hd"><div className="panel-title">📊 Comparativo: Mês Atual × Mês Anterior</div></div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '.8rem', textAlign: 'center' }}>
+          {[
+            { label: 'Vendas Mês Atual',      val: R(rA),  color: 'var(--verde)' },
+            { label: 'Vendas Mês Anterior',   val: R(rP),  color: 'var(--txt)'   },
+            { label: 'Variação Vendas',        val: `${diffR >= 0 ? '+' : ''}${diffR}%`, color: diffR >= 0 ? 'var(--verde)' : 'var(--verm)' },
+            { label: 'Despesa Mês Atual',      val: R(dA),  color: 'var(--verm)'  },
+            { label: 'Despesa Mês Anterior',   val: R(dP),  color: 'var(--txt)'   },
+            { label: 'Variação Despesa',        val: `${diffD >= 0 ? '+' : ''}${diffD}%`, color: diffD <= 0 ? 'var(--verde)' : 'var(--verm)' },
+          ].map((item, i) => (
+            <div key={i} style={{ padding: '1rem', background: 'var(--c2)', borderRadius: 10 }}>
+              <div style={{ fontSize: '.7rem', color: 'var(--txt)', marginBottom: '.4rem', textTransform: 'uppercase', letterSpacing: '.08em' }}>{item.label}</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: item.color, fontFamily: 'var(--mono)' }}>{item.val}</div>
+            </div>
+          ))}
+        </div>
+      </div>
     </Layout>
-  );
+  )
 }

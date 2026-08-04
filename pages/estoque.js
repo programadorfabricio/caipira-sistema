@@ -1,270 +1,218 @@
-// pages/estoque.js — 📦 Controle de estoque
-
+// pages/estoque.js
 import { useState, useEffect } from 'react'
 import Layout from '@/components/Layout'
 import Modal from '@/components/Modal'
-import { sb } from '@/lib/supabase'
-import { R } from '@/lib/helpers'
-
-const CATEGORIAS = ['Carnes','Grãos','Verduras','Bebidas','Temperos','Limpeza','Doces e Sobremesas','Porcoes','Saladas','Outros']
-const UNIDADES   = ['kg','g','l','ml','un','cx','maço','pacote']
+import StatCard from '@/components/StatCard'
+import { R, D, hoje, statusEstoque } from '@/lib/helpers'
+import { getEstoque, addEstoque, updateEstoque, deleteEstoque, getMovimentacoes, addMovimentacao } from '@/lib/db'
 
 export default function Estoque() {
-  const [itens, setItens]     = useState([])
+  const [itens, setItens]   = useState([])
+  const [movs, setMovs]     = useState([])
   const [loading, setLoading] = useState(true)
-  const [modal, setModal]     = useState(null)
-  const [itemAtivo, setItemAtivo] = useState(null)
-  const [busca, setBusca]     = useState('')
-  const [catFiltro, setCatFiltro] = useState('todos')
+  const [srch, setSrch]     = useState('')
+  const [catF, setCatF]     = useState('')
+  const [stsF, setStsF]     = useState('')
+  const [modal, setModal]   = useState(null)
+  const [editId, setEditId] = useState(null)
 
-  const [form, setForm] = useState({
-    nome:'', cat:'Outros', qty:0, min:0,
-    unit:'un', preco_custo:0, preco_venda:0, venda_direta:false
-  })
-  const [movForm, setMovForm] = useState({ tipo:'entrada', quantidade:'', obs:'' })
+  const [form, setForm] = useState({ nome: '', cat: 'Grãos', qty: '', min: '', unit: 'kg', preco: '' })
+  const [movForm, setMovForm] = useState({ tipo: 'entrada', item_id: '', qty: '', obs: '', data: hoje() })
 
   useEffect(() => { carregar() }, [])
 
   async function carregar() {
-    setLoading(true)
-    const { data } = await sb.from('estoque').select('*').order('cat').order('nome')
-    if (data) setItens(data)
+    const [e, m] = await Promise.all([getEstoque(), getMovimentacoes(20)])
+    if (e.data) setItens(e.data)
+    if (m.data) setMovs(m.data)
     setLoading(false)
+  }
+
+  function abrirNovo() {
+    setEditId(null)
+    setForm({ nome: '', cat: 'Grãos', qty: '', min: '', unit: 'kg', preco: '' })
+    setModal('item')
+  }
+
+  function abrirEditar(item) {
+    setEditId(item.id)
+    setForm({ nome: item.nome, cat: item.cat, qty: item.qty, min: item.min, unit: item.unit, preco: item.preco })
+    setModal('item')
   }
 
   async function salvar() {
     if (!form.nome.trim()) return alert('Nome obrigatório!')
-    if (itemAtivo) {
-      await sb.from('estoque').update({ ...form, nome: form.nome.trim() }).eq('id', itemAtivo.id)
+    const dados = { nome: form.nome.trim(), cat: form.cat, qty: Number(form.qty)||0, min: Number(form.min)||0, unit: form.unit, preco: Number(form.preco)||0 }
+    if (editId) {
+      const { data } = await updateEstoque(editId, dados)
+      if (data) setItens(prev => prev.map(i => i.id === editId ? data : i))
     } else {
-      await sb.from('estoque').insert({ ...form, nome: form.nome.trim() })
+      const { data } = await addEstoque(dados)
+      if (data) setItens(prev => [...prev, data])
     }
-    setModal(null); setItemAtivo(null)
-    setForm({ nome:'', cat:'Outros', qty:0, min:0, unit:'un', preco_custo:0, preco_venda:0, venda_direta:false })
-    carregar()
+    setModal(null)
   }
 
-  async function registrarMov() {
-    if (!movForm.quantidade || Number(movForm.quantidade) <= 0) return alert('Quantidade obrigatória!')
-    const qtd = Number(movForm.quantidade)
-    const novaQty = movForm.tipo === 'entrada'
-      ? (itemAtivo.qty || 0) + qtd
-      : Math.max(0, (itemAtivo.qty || 0) - qtd)
-
-    await sb.from('estoque').update({ qty: novaQty }).eq('id', itemAtivo.id)
-    setModal(null); setItemAtivo(null)
-    setMovForm({ tipo:'entrada', quantidade:'', obs:'' })
-    carregar()
+  async function excluir(id) {
+    if (!confirm('Remover item?')) return
+    await deleteEstoque(id)
+    setItens(prev => prev.filter(i => i.id !== id))
   }
 
-  async function deletar(id) {
-    if (!confirm('Remover este item do estoque?')) return
-    await sb.from('estoque').delete().eq('id', id)
-    carregar()
+  async function salvarMov() {
+    if (!movForm.item_id) return alert('Selecione um item!')
+    const qty = Number(movForm.qty)
+    if (!qty || qty <= 0) return alert('Quantidade inválida!')
+    const item = itens.find(i => i.id == movForm.item_id)
+    if (!item) return
+    if (movForm.tipo === 'saida' && qty > item.qty) {
+      if (!confirm(`Estoque atual: ${item.qty}${item.unit}. Continuar?`)) return
+    }
+    const novaQty = movForm.tipo === 'entrada' ? item.qty + qty : Math.max(0, item.qty - qty)
+    await updateEstoque(item.id, { qty: novaQty })
+    const { data: novaMov } = await addMovimentacao({ item_id: item.id, nome: item.nome, tipo: movForm.tipo, qty, data: movForm.data, obs: movForm.obs })
+    setItens(prev => prev.map(i => i.id === item.id ? { ...i, qty: novaQty } : i))
+    if (novaMov) setMovs(prev => [novaMov, ...prev])
+    setMovForm({ tipo: 'entrada', item_id: '', qty: '', obs: '', data: hoje() })
+    setModal(null)
   }
 
-  function abrirEditar(item) {
-    setItemAtivo(item)
-    setForm({ nome:item.nome, cat:item.cat, qty:item.qty, min:item.min, unit:item.unit, preco_custo:item.preco_custo||0, preco_venda:item.preco_venda||0, venda_direta:item.venda_direta||false })
-    setModal('editar')
-  }
+  const filtrados = itens.filter(i => {
+    const ms  = i.nome.toLowerCase().includes(srch.toLowerCase())
+    const mc  = !catF || i.cat === catF
+    const ss  = statusEstoque(i)
+    const mst = !stsF || ss.cls === stsF
+    return ms && mc && mst
+  })
 
-  function abrirMov(item) {
-    setItemAtivo(item)
-    setMovForm({ tipo:'entrada', quantidade:'', obs:'' })
-    setModal('mov')
-  }
+  const tot = itens.length
+  const low = itens.filter(i => i.qty > 0 && i.qty < i.min).length
+  const out = itens.filter(i => i.qty === 0).length
+  const alertas = low + out
 
-  const filtrados = itens
-    .filter(i => catFiltro === 'todos' || i.cat === catFiltro)
-    .filter(i => i.nome.toLowerCase().includes(busca.toLowerCase()))
-
-  const alertas   = itens.filter(i => i.qty <= i.min)
-  const esgotados = itens.filter(i => i.qty === 0)
-
-  if (loading) return (
-    <Layout title="Estoque">
-      <div className="loading-overlay"><div className="loading-icon">📦</div><div className="loading-txt">Carregando...</div></div>
-    </Layout>
-  )
+  if (loading) return <Layout title="Estoque" alertas={0}><div className="loading-overlay"><div className="loading-icon">🌽</div></div></Layout>
 
   return (
-    <Layout title="Estoque">
+    <Layout title="Estoque" alertas={alertas}>
       <div className="ph">
-        <div>
-          <h2>Estoque 📦</h2>
-          <div className="ph-sub">{itens.length} itens · {alertas.length} com estoque baixo</div>
+        <div><h2>Estoque</h2><div className="ph-sub">Controle de ingredientes e insumos</div></div>
+        <div className="ph-actions">
+          <button className="btn btn-vd btn-sm" onClick={() => { setMovForm(f => ({ ...f, tipo: 'entrada' })); setModal('mov') }}>↑ Entrada</button>
+          <button className="btn btn-vm btn-sm" onClick={() => { setMovForm(f => ({ ...f, tipo: 'saida'   })); setModal('mov') }}>↓ Saída</button>
+          <button className="btn btn-ora" onClick={abrirNovo}>+ Novo Item</button>
         </div>
-        <button className="btn btn-ora" onClick={() => { setItemAtivo(null); setForm({ nome:'', cat:'Outros', qty:0, min:0, unit:'un', preco_custo:0, preco_venda:0, venda_direta:false }); setModal('editar') }}>+ Novo Item</button>
       </div>
 
-      {/* Alertas */}
-      {alertas.length > 0 && (
-        <div style={{ background:'rgba(231,76,60,.08)', border:'1px solid rgba(231,76,60,.3)', borderRadius:10, padding:'1rem 1.2rem', marginBottom:'1.2rem' }}>
-          <div style={{ fontWeight:700, color:'var(--verm)', marginBottom:'.5rem' }}>⚠️ Itens com estoque baixo ou esgotado:</div>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:'.4rem' }}>
-            {alertas.map(a => (
-              <span key={a.id} style={{ background:'rgba(231,76,60,.15)', color:'var(--verm)', fontSize:'.75rem', padding:'.2rem .6rem', borderRadius:6, fontFamily:'var(--mono)' }}>
-                {a.nome}: {a.qty}{a.unit}
-              </span>
-            ))}
-          </div>
+      <div className="sg">
+        <StatCard label="Total de Itens"  value={tot}  detail="cadastrados" />
+        <StatCard label="OK"              value={tot-low-out} detail="adequados" color="vd" />
+        <StatCard label="Estoque Baixo"   value={low}  detail="abaixo do mínimo" color="am" />
+        <StatCard label="Esgotados"       value={out}  detail="reposição urgente" color="vm" />
+      </div>
+
+      <div className="panel">
+        <div className="search-row">
+          <input placeholder="🔍 Buscar item..." value={srch} onChange={e => setSrch(e.target.value)} />
+          <select value={catF} onChange={e => setCatF(e.target.value)}>
+            <option value="">Todas categorias</option>
+            {['Carnes','Grãos','Laticínios','Hortifrúti','Bebidas','Temperos','Outros'].map(c => <option key={c}>{c}</option>)}
+          </select>
+          <select value={stsF} onChange={e => setStsF(e.target.value)}>
+            <option value="">Todos status</option>
+            <option value="ok">OK</option>
+            <option value="low">Baixo</option>
+            <option value="out">Esgotado</option>
+          </select>
         </div>
-      )}
-
-      {/* Cards resumo */}
-      <div className="sg" style={{ gridTemplateColumns:'repeat(4,1fr)', marginBottom:'1.2rem' }}>
-        <div className="sc"><div className="sc-label">Total de Itens</div><div className="sc-val">{itens.length}</div></div>
-        <div className="sc"><div className="sc-label">OK</div><div className="sc-val vd">{itens.filter(i=>i.qty>i.min).length}</div></div>
-        <div className="sc"><div className="sc-label">Estoque Baixo</div><div className="sc-val am">{alertas.filter(a=>a.qty>0).length}</div></div>
-        <div className="sc"><div className="sc-label">Esgotados</div><div className="sc-val vm">{esgotados.length}</div></div>
-      </div>
-
-      {/* Filtros */}
-      <div style={{ display:'flex', gap:'.6rem', marginBottom:'1rem', flexWrap:'wrap' }}>
-        <input type="text" placeholder="🔍 Buscar item..." value={busca} onChange={e => setBusca(e.target.value)}
-          style={{ flex:1, minWidth:160, padding:'.65rem .9rem', background:'var(--c2)', border:'1px solid var(--c3)', borderRadius:8, color:'var(--branco)', fontFamily:'var(--mono)', fontSize:'.82rem', outline:'none' }} />
-        <select value={catFiltro} onChange={e => setCatFiltro(e.target.value)}
-          style={{ padding:'.65rem .9rem', background:'var(--c2)', border:'1px solid var(--c3)', borderRadius:8, color:'var(--branco)', fontFamily:'var(--mono)', fontSize:'.82rem', outline:'none' }}>
-          <option value="todos">Todas categorias</option>
-          {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
-        </select>
-      </div>
-
-      {/* Tabela */}
-      <div className="panel" style={{ padding:0, overflow:'hidden' }}>
         <div className="tbl-wrap">
           <table className="tbl">
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Categoria</th>
-                <th>Quantidade</th>
-                <th>Mínimo</th>
-                <th>Status</th>
-                <th>Preço Venda</th>
-                <th></th>
-              </tr>
-            </thead>
+            <thead><tr><th>Item</th><th>Categoria</th><th>Quantidade</th><th>Mínimo</th><th>Un.</th><th>Custo Unit.</th><th>Status</th><th>Ações</th></tr></thead>
             <tbody>
-              {filtrados.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign:'center', padding:'2rem', color:'var(--txt)' }}>Nenhum item encontrado</td></tr>
-              )}
-              {filtrados.map(item => {
-                const status = item.qty === 0 ? 'out' : item.qty <= item.min ? 'low' : 'ok'
-                const label  = item.qty === 0 ? 'Esgotado' : item.qty <= item.min ? 'Baixo' : 'Normal'
-                return (
-                  <tr key={item.id}>
-                    <td style={{ fontWeight:600 }}>{item.nome}</td>
-                    <td><span className="badge badge-info">{item.cat}</span></td>
-                    <td style={{ fontFamily:'var(--mono)' }}>{item.qty} {item.unit}</td>
-                    <td style={{ fontFamily:'var(--mono)', color:'var(--txt)' }}>{item.min} {item.unit}</td>
-                    <td><span className={`badge ${status}`}>{label}</span></td>
-                    <td style={{ fontFamily:'var(--mono)' }}>{item.preco_venda > 0 ? R(item.preco_venda) : '—'}</td>
-                    <td>
-                      <div style={{ display:'flex', gap:'.3rem' }}>
-                        <button className="btn btn-vd btn-sm btn-icon" title="Entrada/Saída" onClick={() => abrirMov(item)}>±</button>
-                        <button className="btn btn-ghost btn-sm btn-icon" title="Editar" onClick={() => abrirEditar(item)}>✏️</button>
-                        <button className="btn btn-vm btn-sm btn-icon" title="Remover" onClick={() => deletar(item.id)}>✕</button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+              {filtrados.length === 0
+                ? <tr><td colSpan="8"><div className="empty"><div className="empty-ico">📦</div><div className="empty-title">Nenhum item encontrado</div></div></td></tr>
+                : filtrados.map(i => {
+                    const s = statusEstoque(i)
+                    return (
+                      <tr key={i.id}>
+                        <td><strong>{i.nome}</strong></td>
+                        <td>{i.cat}</td>
+                        <td style={{ fontFamily: 'var(--mono)' }}>{i.qty}</td>
+                        <td style={{ fontFamily: 'var(--mono)' }}>{i.min}</td>
+                        <td style={{ fontFamily: 'var(--mono)' }}>{i.unit}</td>
+                        <td style={{ fontFamily: 'var(--mono)' }}>{R(i.preco)}</td>
+                        <td><span className={`badge ${s.cls}`}>{s.label}</span></td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '.3rem' }}>
+                            <button className="btn btn-ghost btn-icon btn-sm" onClick={() => abrirEditar(i)}>✏️</button>
+                            <button className="btn btn-vm btn-icon btn-sm" onClick={() => excluir(i.id)}>🗑</button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+              }
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Modal editar/criar */}
-      <Modal open={modal==='editar'} onClose={() => { setModal(null); setItemAtivo(null) }}
-        title={itemAtivo ? 'Editar Item' : 'Novo Item'}
-        actions={<><button className="btn btn-ghost" onClick={() => { setModal(null); setItemAtivo(null) }}>Cancelar</button><button className="btn btn-ora" onClick={salvar}>Salvar</button></>}>
-
-        <div className="fg">
-          <label>Nome *</label>
-          <input type="text" placeholder="Ex: Frango, Arroz..." value={form.nome} onChange={e => setForm(f => ({...f, nome: e.target.value}))} />
-        </div>
-        <div className="form-row">
-          <div className="fg">
-            <label>Categoria</label>
-            <select value={form.cat} onChange={e => setForm(f => ({...f, cat: e.target.value}))}>
-              {CATEGORIAS.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="fg">
-            <label>Unidade</label>
-            <select value={form.unit} onChange={e => setForm(f => ({...f, unit: e.target.value}))}>
-              {UNIDADES.map(u => <option key={u}>{u}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="form-row">
-          <div className="fg">
-            <label>Quantidade atual</label>
-            <input type="number" step="0.01" min="0" value={form.qty} onChange={e => setForm(f => ({...f, qty: Number(e.target.value)}))} />
-          </div>
-          <div className="fg">
-            <label>Quantidade mínima (alerta)</label>
-            <input type="number" step="0.01" min="0" value={form.min} onChange={e => setForm(f => ({...f, min: Number(e.target.value)}))} />
-          </div>
-        </div>
-        <div className="form-row">
-          <div className="fg">
-            <label>Preço de custo</label>
-            <input type="number" step="0.01" min="0" placeholder="0,00" value={form.preco_custo} onChange={e => setForm(f => ({...f, preco_custo: Number(e.target.value)}))} />
-          </div>
-          <div className="fg">
-            <label>Preço de venda</label>
-            <input type="number" step="0.01" min="0" placeholder="0,00" value={form.preco_venda} onChange={e => setForm(f => ({...f, preco_venda: Number(e.target.value)}))} />
-          </div>
-        </div>
-        <div className="fg">
-          <label style={{ display:'flex', alignItems:'center', gap:'.6rem', cursor:'pointer', userSelect:'none' }}>
-            <div onClick={() => setForm(f => ({...f, venda_direta: !f.venda_direta}))}
-              style={{ width:42, height:24, borderRadius:12, background: form.venda_direta ? 'var(--ora)' : 'var(--c3)', position:'relative', transition:'background .2s', flexShrink:0 }}>
-              <div style={{ width:18, height:18, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left: form.venda_direta ? 21 : 3, transition:'left .2s' }} />
+      {/* Movimentações recentes */}
+      <div className="panel">
+        <div className="panel-hd"><div className="panel-title">🔄 Movimentações Recentes</div></div>
+        <div className="mov-list">
+          {movs.slice(0, 10).map(m => (
+            <div key={m.id} className="mov-item">
+              <div className={`mv-dot ${m.tipo}`} />
+              <div className="mv-info">
+                <div className="mv-name">{m.nome} <span style={{ fontSize: '.7rem', color: 'var(--txt)' }}>({m.tipo})</span></div>
+                <div className="mv-date">{D(m.data)}{m.obs ? ' · ' + m.obs : ''}</div>
+              </div>
+              <div className={`mv-val ${m.tipo}`}>{m.tipo === 'entrada' ? '+' : '-'}{m.qty} {itens.find(i => i.id === (m.item_id||m.itemId))?.unit || ''}</div>
             </div>
-            <span style={{ fontWeight:600 }}>🛒 Aparece na tela de Vendas</span>
-          </label>
-          <div style={{ fontSize:'.75rem', color:'var(--txt)', marginTop:'.3rem' }}>
-            Ative apenas para itens que são vendidos diretamente (refri, sobremesa, etc). Ingredientes como sal e frango devem ficar desativados.
+          ))}
+          {movs.length === 0 && <div className="empty"><div className="empty-ico">🔄</div><div className="empty-title">Nenhuma movimentação</div></div>}
+        </div>
+      </div>
+
+      {/* Modal item */}
+      <Modal open={modal === 'item'} onClose={() => setModal(null)} title={editId ? 'Editar Item' : 'Novo Item'}
+        actions={<><button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-ora" onClick={salvar}>Salvar</button></>}>
+        <div className="form-row">
+          <div className="fg"><label>Nome *</label><input value={form.nome} onChange={e => setForm(f=>({...f,nome:e.target.value}))} placeholder="Ex: Arroz branco"/></div>
+          <div className="fg"><label>Categoria</label>
+            <select value={form.cat} onChange={e => setForm(f=>({...f,cat:e.target.value}))}>
+              {['Carnes','Grãos','Laticínios','Hortifrúti','Bebidas','Temperos','Outros'].map(c=><option key={c}>{c}</option>)}
+            </select>
           </div>
+        </div>
+        <div className="form-row">
+          <div className="fg"><label>Qtd Atual</label><input type="number" value={form.qty} onChange={e => setForm(f=>({...f,qty:e.target.value}))} placeholder="0"/></div>
+          <div className="fg"><label>Qtd Mínima</label><input type="number" value={form.min} onChange={e => setForm(f=>({...f,min:e.target.value}))} placeholder="0"/></div>
+        </div>
+        <div className="form-row">
+          <div className="fg"><label>Unidade</label>
+            <select value={form.unit} onChange={e => setForm(f=>({...f,unit:e.target.value}))}>
+              {['kg','g','L','ml','un','cx','pct'].map(u=><option key={u}>{u}</option>)}
+            </select>
+          </div>
+          <div className="fg"><label>Custo Unitário (R$)</label><input type="number" value={form.preco} onChange={e => setForm(f=>({...f,preco:e.target.value}))} placeholder="0,00" step="0.01"/></div>
         </div>
       </Modal>
 
       {/* Modal movimentação */}
-      <Modal open={modal==='mov'} onClose={() => { setModal(null); setItemAtivo(null) }}
-        title={`Movimentação — ${itemAtivo?.nome}`}
-        actions={<><button className="btn btn-ghost" onClick={() => { setModal(null); setItemAtivo(null) }}>Cancelar</button><button className="btn btn-ora" onClick={registrarMov}>Registrar</button></>}>
-
-        <div style={{ background:'var(--c2)', borderRadius:10, padding:'1rem', marginBottom:'1rem', textAlign:'center' }}>
-          <div style={{ fontSize:'.75rem', color:'var(--txt)', marginBottom:'.3rem' }}>Estoque atual</div>
-          <div style={{ fontSize:'2rem', fontWeight:800, color:'var(--ora)', fontFamily:'var(--mono)' }}>{itemAtivo?.qty} {itemAtivo?.unit}</div>
+      <Modal open={modal === 'mov'} onClose={() => setModal(null)} title={movForm.tipo === 'entrada' ? 'Registrar Entrada' : 'Registrar Saída'}
+        actions={<><button className="btn btn-ghost" onClick={() => setModal(null)}>Cancelar</button><button className="btn btn-ora" onClick={salvarMov}>Registrar</button></>}>
+        <div className="fg"><label>Item *</label>
+          <select value={movForm.item_id} onChange={e => setMovForm(f=>({...f,item_id:e.target.value}))}>
+            <option value="">Selecione...</option>
+            {itens.map(i => <option key={i.id} value={i.id}>{i.nome} ({i.qty}{i.unit})</option>)}
+          </select>
         </div>
-
-        <div className="fg">
-          <label>Tipo</label>
-          <div style={{ display:'flex', gap:'.6rem' }}>
-            <button className={`btn ${movForm.tipo==='entrada'?'btn-vd':'btn-ghost'}`} style={{ flex:1 }} onClick={() => setMovForm(f => ({...f, tipo:'entrada'}))}>📥 Entrada</button>
-            <button className={`btn ${movForm.tipo==='saida'?'btn-vm':'btn-ghost'}`} style={{ flex:1 }} onClick={() => setMovForm(f => ({...f, tipo:'saida'}))}>📤 Saída</button>
-          </div>
+        <div className="form-row">
+          <div className="fg"><label>Quantidade *</label><input type="number" value={movForm.qty} onChange={e => setMovForm(f=>({...f,qty:e.target.value}))} placeholder="0" min="0.01" step="0.01"/></div>
+          <div className="fg"><label>Data</label><input type="date" value={movForm.data} onChange={e => setMovForm(f=>({...f,data:e.target.value}))}/></div>
         </div>
-        <div className="fg">
-          <label>Quantidade *</label>
-          <input type="number" step="0.01" min="0" placeholder={`Quantidade em ${itemAtivo?.unit}`}
-            value={movForm.quantidade} onChange={e => setMovForm(f => ({...f, quantidade: e.target.value}))} />
-        </div>
-        {movForm.quantidade && (
-          <div style={{ background:'var(--c2)', borderRadius:8, padding:'.7rem 1rem', fontFamily:'var(--mono)', fontSize:'.85rem' }}>
-            Novo estoque: <strong style={{ color: movForm.tipo==='entrada'?'var(--verde)':'var(--verm)' }}>
-              {movForm.tipo==='entrada'
-                ? (Number(itemAtivo?.qty||0) + Number(movForm.quantidade)).toFixed(2)
-                : Math.max(0, Number(itemAtivo?.qty||0) - Number(movForm.quantidade)).toFixed(2)
-              } {itemAtivo?.unit}
-            </strong>
-          </div>
-        )}
+        <div className="fg"><label>Observação</label><input value={movForm.obs} onChange={e => setMovForm(f=>({...f,obs:e.target.value}))} placeholder="Opcional"/></div>
       </Modal>
     </Layout>
   )
