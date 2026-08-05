@@ -7,15 +7,20 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 
 const MENU = [
-  { id: 'dashboard',    label: 'Dashboard',    ico: '📊', section: 'Principal' },
-  { id: 'comandas',     label: 'Comandas',     ico: '🎟️', section: null },
-  { id: 'caixa/abrir',  label: 'Abrir Caixa',  ico: '🟢', section: 'Caixa' },
-  { id: 'caixa/fechar', label: 'Fechar Caixa', ico: '🔴', section: null },
-  { id: 'estoque',      label: 'Estoque',      ico: '📦', section: null, badge: 'alertas' },
-  { id: 'cardapio',     label: 'Cardápio',     ico: '🍽️', section: null },
-  { id: 'produtos',     label: 'Produtos',     ico: '🥘', section: 'Administração' },
-  { id: 'ingredientes', label: 'Ingredientes', ico: '🥕', section: null },
-  { id: 'relatorios',   label: 'Relatórios',   ico: '📋', section: null },
+  { id: 'dashboard',     label: 'Dashboard',       ico: '📊', section: 'Principal' },
+  { id: 'comandas',      label: 'Comandas',        ico: '🎟️', section: null },
+  { id: 'whatsapp',      label: 'WhatsApp',        ico: '📱', section: null },
+  { id: 'caixa/abrir',   label: 'Abrir Caixa',     ico: '🟢', section: 'Caixa' },
+  { id: 'caixa/fechar',  label: 'Fechar Caixa',    ico: '🔴', section: null },
+  { id: 'estoque',       label: 'Estoque',         ico: '📦', section: null, badge: 'alertas' },
+  { id: 'cardapio',      label: 'Cardápio',        ico: '🍽️', section: null },
+  // "Cardápio do Dia" reaproveita a página /cardapio (ainda não existe página dedicada às misturas do dia)
+  { id: 'cardapio-dia',  label: 'Cardápio do Dia', ico: '🗒️', section: null, path: 'cardapio' },
+  { id: 'produtos',      label: 'Produtos',        ico: '🥘', section: 'Administração' },
+  { id: 'ingredientes',  label: 'Ingredientes',    ico: '🥕', section: null },
+  { id: 'relatorios',    label: 'Relatórios',      ico: '📋', section: null },
+  { id: 'financeiro',    label: 'Financeiro',      ico: '💰', section: null },
+  { id: 'configuracoes', label: 'Configurações',   ico: '⚙️', section: null },
 ]
 
 export default function Layout({ children, title = 'O Caipira', alertas = 0 }) {
@@ -30,8 +35,8 @@ export default function Layout({ children, title = 'O Caipira', alertas = 0 }) {
     }
   }, [])
 
-  function navTo(id) {
-    router.push('/' + id)
+  function navTo(item) {
+    router.push('/' + (item.path || item.id))
     setSidebarOpen(false)
   }
 
@@ -70,8 +75,8 @@ export default function Layout({ children, title = 'O Caipira', alertas = 0 }) {
             <div key={item.id}>
               {item.section && <div className="sb-sec">{item.section}</div>}
               <button
-                className={`sb-item${atual === item.id ? ' active' : ''}`}
-                onClick={() => navTo(item.id)}
+                className={`sb-item${atual === (item.path || item.id) ? ' active' : ''}`}
+                onClick={() => navTo(item)}
               >
                 <span className="ico">{item.ico}</span>
                 {item.label}
