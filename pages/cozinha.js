@@ -1,5 +1,5 @@
 // pages/cozinha.js — 👩‍🍳 Tela da Cozinha (tablet)
-// Mostra os pedidos do dia separados em 3 colunas: Entrega | Retirada | Prato Feito.
+// Mostra os pedidos do dia separados em 4 colunas: Entrega | Retirada (WhatsApp) | Balcão | Prato Feito.
 // Junta 3 fontes: balcao_pedidos (balcão), wpp_pedidos (WhatsApp) e comandas (mesas).
 // Atualiza sozinha (Supabase Realtime + recarga a cada 15s como garantia).
 // "Pronto" grava pronto_em no banco (ver COZINHA_SQL.sql) e também esconde no próprio tablet.
@@ -13,6 +13,7 @@ import { hoje } from '@/lib/helpers'
 const COLUNAS = [
   { id: 'entrega',  nome: 'ENTREGA',     cor: '#5AA9FF' },
   { id: 'retirada', nome: 'RETIRADA',    cor: '#B79CFF' },
+  { id: 'balcao',   nome: 'BALCÃO',      cor: '#FF8FB8' },
   { id: 'pf',       nome: 'PRATO FEITO', cor: '#3FC7B5' },
 ]
 
@@ -59,7 +60,7 @@ function normalizar({ balcao, wpp, mesas }) {
       chave: `balcao-${p.id}`,
       tabela: 'balcao_pedidos',
       id: p.id,
-      coluna: ehPF(p.tipo_prato) ? 'pf' : 'retirada',
+      coluna: ehPF(p.tipo_prato) ? 'pf' : 'balcao',
       numero: `#${p.numero}`,
       nome: p.cliente_nome || `Balcão #${p.numero}`,
       titulo: `${p.tipo_prato || ''} ${p.tamanho || ''}`.trim(),
@@ -105,7 +106,7 @@ function normalizar({ balcao, wpp, mesas }) {
       chave: `mesa-${c.id}`,
       tabela: 'comandas',
       id: c.id,
-      coluna: ehPF(c.tipo_prato) ? 'pf' : 'retirada',
+      coluna: ehPF(c.tipo_prato) ? 'pf' : 'balcao',
       numero: c.mesa ? `Mesa ${c.mesa}` : 'Mesa',
       nome: c.cliente_nome && !String(c.cliente_nome).startsWith('Mesa') ? c.cliente_nome : (c.mesa ? `Mesa ${c.mesa}` : 'Mesa'),
       titulo: `${c.tipo_prato || ''} ${c.tamanho || ''}`.trim(),
@@ -335,9 +336,9 @@ export default function Cozinha() {
         .kds-hora { font-size: 28px; font-weight: 800; }
         .kds-btn { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid #3A414B; background: transparent; color: #F2F2F0; font-size: 15px; font-weight: 700; }
         .kds-erro { margin: 12px 20px 0; padding: 10px 14px; border-radius: 10px; background: #3A1F1C; color: #FFB4AB; }
-        .kds-colunas { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 16px 20px; align-items: start; }
+        .kds-colunas { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 16px 16px; align-items: start; }
         .kds-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-        .kds-col-topo { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-radius: 12px; color: #111318; font-size: 24px; font-weight: 800; }
+        .kds-col-topo { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 12px; color: #111318; font-size: 22px; font-weight: 800; }
         .kds-col-topo b { min-width: 40px; height: 40px; border-radius: 20px; background: #111318; color: #F2F2F0; display: flex; align-items: center; justify-content: center; font-size: 20px; }
         .kds-lista { display: flex; flex-direction: column; gap: 12px; }
         .kds-vazio { padding: 28px 16px; text-align: center; color: #A3A8B0; border: 2px dashed #2A2F37; border-radius: 12px; }
@@ -360,7 +361,8 @@ export default function Cozinha() {
         .kds-pronto:active { background: #3A414B; }
         .kds-rodape { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center; padding: 10px 20px 16px; border-top: 1px solid #2A2F37; color: #A3A8B0; }
         .kds-legenda { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-        @media (max-width: 760px) { .kds-colunas { grid-template-columns: 1fr; } }
+        @media (max-width: 1100px) { .kds-colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 640px) { .kds-colunas { grid-template-columns: 1fr; } }
       `}</style>
     </>
   )
