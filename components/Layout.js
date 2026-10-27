@@ -10,6 +10,7 @@ const MENU = [
   { id: 'dashboard',     label: 'Dashboard',       ico: '📊', section: 'Principal' },
   { id: 'comandas',      label: 'Comandas',        ico: '🎟️', section: null },
   { id: 'whatsapp',      label: 'WhatsApp',        ico: '📱', section: null },
+  { id: 'cozinha',       label: 'Tela da Cozinha', ico: '👩‍🍳', section: null },
   { id: 'caixa/abrir',   label: 'Abrir Caixa',     ico: '🟢', section: 'Caixa' },
   { id: 'caixa/fechar',  label: 'Fechar Caixa',    ico: '🔴', section: null },
   { id: 'estoque',       label: 'Estoque',         ico: '📦', section: null, badge: 'alertas' },
@@ -17,7 +18,7 @@ const MENU = [
   // "Cardápio do Dia" reaproveita a página /cardapio (ainda não existe página dedicada às misturas do dia)
   { id: 'cardapio-dia',  label: 'Cardápio do Dia', ico: '🗒️', section: null, path: 'cardapio' },
   { id: 'produtos',      label: 'Produtos',        ico: '🥘', section: 'Administração' },
-  { id: 'ingredientes',  label: 'Ingredientes',    ico: '🥕', section: null },
+  // Ingredientes escondido do menu a pedido da dona (página continua no código)
   { id: 'relatorios',    label: 'Relatórios',      ico: '📋', section: null },
   { id: 'financeiro',    label: 'Financeiro',      ico: '💰', section: null },
   { id: 'configuracoes', label: 'Configurações',   ico: '⚙️', section: null },
